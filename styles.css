@@ -32,6 +32,24 @@ body {
 }
 svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 
+/* a11y: visible keyboard focus, never for mouse/touch */
+:focus-visible { outline: 2px solid var(--violet); outline-offset: 2px; border-radius: 10px; }
+:focus:not(:focus-visible) { outline: none; }
+
+/* tabular figures so numbers never shift layout */
+.count, .stat b, .mo-streak b, .streak-n b, .focus-time, .note-time, .fu-when,
+#goalsProgress, #moWeek, #focusToday { font-variant-numeric: tabular-nums; }
+
+/* invisible hit-slop: small icon buttons reach the 44px touch minimum without layout change */
+.check, .del, .bt-check, .bt-edit, .add-btn, .icon-btn, .back.small { position: relative; }
+.check::after, .del::after, .bt-check::after, .bt-edit::after { content: ""; position: absolute; inset: -11px; }
+
+/* honor reduced-motion: kill entrances, pulses, confetti, transitions */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
+  .confetti { display: none !important; }
+}
+
 /* screens */
 .screen { display: none; }
 .screen.active { display: block; }
@@ -153,7 +171,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 
 /* top actions + history */
 .top-actions { display: flex; align-items: center; gap: 10px; }
-.icon-btn { width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2);
+.icon-btn { width: 44px; height: 44px; border-radius: 13px; background: var(--surface-2);
   border: 1px solid var(--border); color: var(--text); display: grid; place-items: center; cursor: pointer;
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); transition: transform .12s, background .2s; }
 .icon-btn svg { width: 19px; height: 19px; }
@@ -172,7 +190,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
   padding: calc(var(--sa-t) + 10px) 18px calc(var(--sa-b) + 28px); }
 .sheet-head { display: flex; align-items: center; gap: 12px; max-width: 560px; margin: 0 auto 18px; }
 .sheet-head h2 { font-size: 22px; font-weight: 800; letter-spacing: -.02em; margin: 0; flex: 1; }
-.back.small { position: static; width: 40px; height: 40px; }
+.back.small { position: static; width: 44px; height: 44px; }
 
 .history-list { max-width: 560px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
 .day-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px 18px;
@@ -328,7 +346,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .fld input[type=date] { color-scheme: dark; }
 .fld-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .tag-row { display: flex; flex-wrap: wrap; gap: 8px; }
-.tag-opt { padding: 9px 15px; border-radius: 999px; cursor: pointer; font-size: 13.5px; font-weight: 600;
+.tag-opt { padding: 11px 16px; border-radius: 999px; cursor: pointer; font-size: 13.5px; font-weight: 600;
   background: var(--surface); border: 1px solid var(--border-2); color: var(--muted); transition: .15s; text-transform: capitalize; }
 .tag-opt.sel { background: var(--accent-grad); border-color: transparent; color: #fff; }
 .save-btn { margin-top: 6px; padding: 15px; border-radius: 15px; border: none; cursor: pointer;
@@ -339,6 +357,26 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 
 /* note timestamps */
 .note-time { font-size: 11px; color: var(--faint); font-weight: 600; margin-left: auto; flex: none; padding-left: 8px; white-space: nowrap; }
+
+/* ---- micro-interactions / polish ---- */
+/* spatial continuity: sheets rise in, fullscreen captures fade in */
+@keyframes sheetIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.sheet.active { animation: sheetIn .32s cubic-bezier(.2, .7, .2, 1) both; }
+.fullscreen.active { animation: fadeIn .24s ease both; }
+
+/* check pop confirms completion */
+@keyframes pop { 0% { transform: scale(.5); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.item.done .check svg, .bt-view.done .bt-check svg { animation: pop .26s cubic-bezier(.2, .7, .2, 1); }
+
+/* pointer (desktop) hover affordances — never on touch */
+@media (hover: hover) {
+  .action:hover, .fp:hover { background: var(--surface-2); border-color: var(--border-2); }
+  .person:hover, .momentum-strip:hover, .ghost-btn:hover { background: var(--surface-2); }
+  .icon-btn:hover, .pill:hover { background: var(--surface-2); }
+  .del:hover { color: var(--text); }
+  .bt-focus:hover, .add-btn:hover, .save-btn:hover, .focus-main:hover { filter: brightness(1.08); }
+}
 
 /* confetti */
 .confetti { position: fixed; inset: 0; pointer-events: none; z-index: 50; overflow: hidden; }

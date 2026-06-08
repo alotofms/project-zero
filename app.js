@@ -231,6 +231,8 @@ async function syncJournal() {
 
 /* ---------- reward ---------- */
 function reward(n) {
+  if (navigator.vibrate) { try { navigator.vibrate(28); } catch (e) {} }
+  if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const c = $('confetti'); if (!c) return;
   const cols = ['#ff5a45', '#9b6bff', '#34d8a4', '#ffb23d', '#ff2e74', '#4f9bff'];
   let h = '';
@@ -241,7 +243,6 @@ function reward(n) {
   }
   c.innerHTML = h;
   clearTimeout(reward._t); reward._t = setTimeout(() => { c.innerHTML = ''; }, 1700);
-  if (navigator.vibrate) { try { navigator.vibrate(28); } catch (e) {} }
 }
 
 /* ---------- the one thing ---------- */
