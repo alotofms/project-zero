@@ -1,7 +1,7 @@
 'use strict';
 
 /* ---------- config ---------- */
-const WEB_CLIENT_ID = '__WEB_CLIENT_ID__';                 // injected at deploy
+const WEB_CLIENT_ID = '351479291268-gf1h06nicbbo1p5o9bqceqci2rrsadi9.apps.googleusercontent.com';                 // injected at deploy
 const SCOPE = 'https://www.googleapis.com/auth/drive.file';
 
 /* ---------- elements ---------- */
