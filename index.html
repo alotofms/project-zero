@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Project Zero" />
+  <meta name="theme-color" content="#000000" />
+  <title>Project Zero</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body>
+  <!-- HOME -->
+  <section id="home" class="screen active">
+    <header class="app-head">
+      <h1>Project Zero</h1>
+      <div id="status" class="status">Ready</div>
+    </header>
+    <div class="grid">
+      <button class="tile" data-go="video"><span class="ic">🎥</span><span>Record Video</span></button>
+      <button class="tile" data-go="photo"><span class="ic">📷</span><span>Take Photo</span></button>
+      <button class="tile" data-go="voice"><span class="ic">🎙️</span><span>Voice Note</span></button>
+      <button class="tile" id="pickImage"><span class="ic">🖼️</span><span>Upload Image</span></button>
+      <button class="tile" id="pickFile"><span class="ic">📄</span><span>Upload File</span></button>
+      <button class="tile" id="uploadAll"><span class="ic">⬆️</span><span>Upload All</span></button>
+    </div>
+    <input id="imageInput" type="file" accept="image/*" multiple hidden />
+    <input id="fileInput" type="file" multiple hidden />
+  </section>
+
+  <!-- CAMERA (video + photo) -->
+  <section id="camera" class="screen">
+    <button class="back" data-back>‹ Back</button>
+    <video id="preview" autoplay playsinline muted></video>
+    <div id="camStatus" class="status floating"></div>
+    <div class="controls">
+      <button id="shutter" class="shutter"></button>
+    </div>
+  </section>
+
+  <!-- VOICE -->
+  <section id="voice" class="screen">
+    <button class="back" data-back>‹ Back</button>
+    <div class="voice-body">
+      <div id="voiceIcon" class="voice-icon">🎙️</div>
+      <div id="voiceStatus" class="voice-status">Tap to record a voice note</div>
+    </div>
+    <div class="controls">
+      <button id="voiceBtn" class="shutter"></button>
+    </div>
+  </section>
+
+  <!-- SIGN IN -->
+  <section id="signin" class="overlay">
+    <h1>Project Zero</h1>
+    <p>Sign in to upload your story to Google Drive.</p>
+    <button id="signinBtn" class="primary">Sign in with Google</button>
+    <p id="authMsg" class="err"></p>
+  </section>
+
+  <script src="app.js"></script>
+</body>
+</html>
