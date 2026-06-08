@@ -1,8 +1,8 @@
 :root {
   --bg: #0a0a0f;
   --text: #f4f4f7;
-  --muted: rgba(244, 244, 247, .52);
-  --faint: rgba(244, 244, 247, .30);
+  --muted: rgba(244, 244, 247, .60);
+  --faint: rgba(244, 244, 247, .38);
   --surface: rgba(255, 255, 255, .045);
   --surface-2: rgba(255, 255, 255, .08);
   --border: rgba(255, 255, 255, .09);
@@ -133,7 +133,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 /* add row */
 .add-row { display: flex; gap: 10px; align-items: center; margin-top: 6px; }
 .add-row input { flex: 1; background: rgba(255, 255, 255, .05); border: 1px solid var(--border);
-  border-radius: 13px; padding: 12px 14px; color: var(--text); font-size: 15px; outline: none; transition: .2s; }
+  border-radius: 13px; padding: 12px 14px; color: var(--text); font-size: 16px; outline: none; transition: .2s; }
 .add-row input::placeholder { color: var(--faint); }
 .add-row input:focus { border-color: var(--violet); background: rgba(138, 107, 255, .08); }
 .add-btn { flex: none; width: 44px; height: 44px; border-radius: 13px; border: none; cursor: pointer;
@@ -273,7 +273,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .bt-edit:active { background: var(--surface-2); color: var(--text); }
 .bt-form { display: flex; gap: 10px; align-items: center; }
 .bt-form input { flex: 1; background: rgba(255, 255, 255, .06); border: 1px solid var(--border);
-  border-radius: 13px; padding: 12px 14px; color: var(--text); font-size: 15px; outline: none; transition: .2s; }
+  border-radius: 13px; padding: 12px 14px; color: var(--text); font-size: 16px; outline: none; transition: .2s; }
 .bt-form input::placeholder { color: var(--faint); }
 .bt-form input:focus { border-color: var(--violet); background: rgba(138, 107, 255, .1); }
 
@@ -339,7 +339,7 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .fld { display: flex; flex-direction: column; gap: 7px; }
 .fld > span { font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--muted); }
 .fld input, .fld textarea { background: rgba(255, 255, 255, .05); border: 1px solid var(--border);
-  border-radius: 13px; padding: 13px 14px; color: var(--text); font-size: 15px; outline: none;
+  border-radius: 13px; padding: 13px 14px; color: var(--text); font-size: 16px; outline: none;
   font-family: inherit; transition: .2s; }
 .fld input:focus, .fld textarea:focus { border-color: var(--violet); background: rgba(138, 107, 255, .08); }
 .fld textarea { resize: none; line-height: 1.4; }
