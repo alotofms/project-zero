@@ -106,6 +106,7 @@ const qAll = () => new Promise((res) => { const out = []; const c = db.transacti
 async function enqueue(blob, name, mime) {
   const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.round(performance.now());
   await qAdd({ id, name, mime, blob, createdAt: Date.now() });
+  bumpCaptures(); updateMomentum();
   flash('Saved'); processQueue();
 }
 async function processQueue() {
@@ -193,7 +194,7 @@ function renderGoals() {
   goalsProgress.textContent = `${done} / ${goals.length}`;
   goalsBar.style.width = goals.length ? (done / goals.length * 100) + '%' : '0%';
 }
-function saveGoals() { lsSet('goals_' + TODAY, goals); renderGoals(); scheduleJournal(); }
+function saveGoals() { lsSet('goals_' + TODAY, goals); renderGoals(); scheduleJournal(); updateMomentum(); }
 
 function renderNotes() {
   notesList.innerHTML = '';
@@ -206,7 +207,7 @@ function renderNotes() {
     notesList.appendChild(li);
   });
 }
-function saveNotes() { lsSet('notes_' + TODAY, notes); renderNotes(); scheduleJournal(); }
+function saveNotes() { lsSet('notes_' + TODAY, notes); renderNotes(); scheduleJournal(); updateMomentum(); }
 
 let journalTimer = null;
 function scheduleJournal() { clearTimeout(journalTimer); journalTimer = setTimeout(syncJournal, 2500); }
@@ -217,6 +218,65 @@ async function syncJournal() {
   L.push('', 'NOTES');
   notes.length ? notes.forEach((n) => L.push('• ' + n.t)) : L.push('(none)');
   try { const token = await ensureToken(); const folderId = await resolveDailyFolder(new Date(), token); await upsertTextFile('Journal — ' + TODAY + '.txt', L.join('\n'), folderId, token); } catch (e) {}
+}
+
+/* ---------- momentum ---------- */
+const capKey = (ds) => 'cap_' + ds;
+const captureCount = (ds) => +(localStorage.getItem(capKey(ds)) || 0);
+function bumpCaptures() { localStorage.setItem(capKey(TODAY), captureCount(TODAY) + 1); }
+const shift = (ds, days) => { const d = new Date(ds + 'T00:00:00'); d.setDate(d.getDate() + days); return localDay(d); };
+function activeOn(ds) { return lsGet('goals_' + ds).length > 0 || lsGet('notes_' + ds).length > 0 || captureCount(ds) > 0; }
+function currentStreak() {
+  let ds = TODAY; if (!activeOn(ds)) ds = shift(ds, -1);
+  let s = 0; while (activeOn(ds)) { s++; ds = shift(ds, -1); } return s;
+}
+function allActiveDates() {
+  const set = new Set();
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i); let m;
+    if ((m = k.match(/^goals_(\d{4}-\d{2}-\d{2})$/)) && lsGet(k).length) set.add(m[1]);
+    else if ((m = k.match(/^notes_(\d{4}-\d{2}-\d{2})$/)) && lsGet(k).length) set.add(m[1]);
+    else if ((m = k.match(/^cap_(\d{4}-\d{2}-\d{2})$/)) && +localStorage.getItem(k) > 0) set.add(m[1]);
+  }
+  return set;
+}
+function longestStreak() {
+  const dates = [...allActiveDates()].sort();
+  let best = 0, run = 0, prev = null;
+  for (const ds of dates) { run = (prev && shift(prev, 1) === ds) ? run + 1 : 1; best = Math.max(best, run); prev = ds; }
+  return best;
+}
+function goalTotals() {
+  let set = 0, done = 0;
+  for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('goals_')) { const a = lsGet(k); set += a.length; done += a.filter((g) => g.done).length; } }
+  return { set, done };
+}
+function capturesTotal() { let n = 0; for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k.startsWith('cap_')) n += +localStorage.getItem(k) || 0; } return n; }
+function weekStats() { let set = 0, done = 0; for (let i = 0; i < 7; i++) { const a = lsGet('goals_' + shift(TODAY, -i)); set += a.length; done += a.filter((g) => g.done).length; } return { set, done }; }
+function coachPrompt() {
+  const open = goals.filter((g) => !g.done).length, s = currentStreak();
+  if (!activeOn(TODAY)) return s > 0 ? `Don't break your ${s}-day streak — log one thing today.` : `Start your streak. Add a goal or capture a moment.`;
+  if (goals.length && open === 0) return `All goals done today. Raise the bar — add another.`;
+  if (open > 0) return `${open} goal${open > 1 ? 's' : ''} still open. Knock out the biggest one.`;
+  return `You showed up today. Capture a clip for the archive.`;
+}
+function updateMomentum() { $('streakNum').textContent = currentStreak(); $('coachText').textContent = coachPrompt(); }
+function openMomentum() {
+  show('momentum');
+  const s = currentStreak(), best = longestStreak(), gt = goalTotals(), wk = weekStats();
+  $('moStreak').textContent = s;
+  $('moBest').textContent = `best ${best} day${best === 1 ? '' : 's'}`;
+  $('moCoach').textContent = coachPrompt();
+  $('moWeek').textContent = `${wk.done} / ${wk.set}`;
+  $('moWeekBar').style.width = wk.set ? (wk.done / wk.set * 100) + '%' : '0%';
+  $('moWeekText').textContent = wk.set ? `${wk.done} of ${wk.set} goals done this week` : 'No goals set this week yet.';
+  $('stDays').textContent = allActiveDates().size;
+  $('stGoals').textContent = gt.done;
+  $('stClips').textContent = capturesTotal();
+  $('stRate').textContent = gt.set ? Math.round(gt.done / gt.set * 100) + '%' : '0%';
+  let cells = '';
+  for (let i = 34; i >= 0; i--) { const ds = shift(TODAY, -i); cells += `<span class="cell${activeOn(ds) ? ' on' : ''}${ds === TODAY ? ' today' : ''}"></span>`; }
+  $('moGrid').innerHTML = cells;
 }
 
 /* ---------- history ---------- */
@@ -314,6 +374,7 @@ fileInput.addEventListener('change', () => { [...fileInput.files].forEach((f) =>
 statusEl.addEventListener('click', () => { accessToken ? processQueue() : requestToken('').catch(() => {}); });
 $('historyBtn').addEventListener('click', openHistory);
 $('historyLink').addEventListener('click', openHistory);
+$('momentumStrip').addEventListener('click', openMomentum);
 goalForm.addEventListener('submit', (e) => { e.preventDefault(); const v = goalInput.value.trim(); if (!v) return; goals.push({ t: v, done: false }); goalInput.value = ''; saveGoals(); });
 noteForm.addEventListener('submit', (e) => { e.preventDefault(); const v = noteInput.value.trim(); if (!v) return; notes.push({ t: v, ts: Date.now() }); noteInput.value = ''; saveNotes(); });
 
@@ -321,6 +382,6 @@ noteForm.addEventListener('submit', (e) => { e.preventDefault(); const v = noteI
 (async function boot() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   try { db = await openDB(); } catch (e) {}
-  renderGoals(); renderNotes(); await render();
+  renderGoals(); renderNotes(); updateMomentum(); await render();
   whenGIS(initAuth);
 })();

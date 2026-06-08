@@ -26,6 +26,7 @@
       <g id="i-sync"><path d="M16 16l-4-4-4 4"/><path d="M12 12v9"/><path d="M20.4 14.9A5 5 0 0 0 18 5.5a7 7 0 0 0-13.4 2A4.5 4.5 0 0 0 4 16"/></g>
       <g id="i-check"><polyline points="20 6 9 17 4 12"/></g>
       <g id="i-history"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7.5V12l3 2"/></g>
+      <g id="i-flame"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></g>
     </defs>
   </svg>
 </head>
@@ -45,6 +46,13 @@
         <button id="status" class="pill">Ready</button>
       </div>
     </header>
+
+    <button id="momentumStrip" class="momentum-strip">
+      <span class="flame"><svg viewBox="0 0 24 24"><use href="#i-flame"/></svg></span>
+      <span class="streak-n"><b id="streakNum">0</b> day streak</span>
+      <span id="coachText" class="coach">Set a goal to start your streak.</span>
+      <svg viewBox="0 0 24 24" class="chev-r"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
 
     <section class="block">
       <h2 class="label">Capture</h2>
@@ -94,6 +102,36 @@
       <span id="historyHint" class="muted small"></span>
     </header>
     <div id="historyList" class="history-list"></div>
+  </section>
+
+  <!-- MOMENTUM -->
+  <section id="momentum" class="screen sheet">
+    <header class="sheet-head">
+      <button class="back small" data-back><svg viewBox="0 0 24 24" class="chev"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <h2>Momentum</h2>
+    </header>
+    <div class="mo-wrap">
+      <div class="mo-hero">
+        <span class="mo-flame"><svg viewBox="0 0 24 24"><use href="#i-flame"/></svg></span>
+        <div><div class="mo-streak"><b id="moStreak">0</b> day streak</div><div id="moBest" class="muted small">best 0 days</div></div>
+      </div>
+      <p id="moCoach" class="mo-coach"></p>
+      <div class="card">
+        <div class="card-head"><h2 class="label">This week</h2><span id="moWeek" class="count">0 / 0</span></div>
+        <div class="progress"><div id="moWeekBar" class="progress-fill"></div></div>
+        <p id="moWeekText" class="muted small"></p>
+      </div>
+      <div class="card">
+        <h2 class="label">Last 5 weeks</h2>
+        <div id="moGrid" class="mo-grid"></div>
+      </div>
+      <div class="mo-stats">
+        <div class="stat"><b id="stDays">0</b><span>Active days</span></div>
+        <div class="stat"><b id="stGoals">0</b><span>Goals done</span></div>
+        <div class="stat"><b id="stClips">0</b><span>Clips</span></div>
+        <div class="stat"><b id="stRate">0%</b><span>Completion</span></div>
+      </div>
+    </div>
   </section>
 
   <!-- CAMERA -->
