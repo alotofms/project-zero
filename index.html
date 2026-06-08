@@ -7,61 +7,98 @@
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Project Zero" />
-  <meta name="theme-color" content="#000000" />
+  <meta name="theme-color" content="#0a0a0f" />
   <title>Project Zero</title>
   <link rel="manifest" href="manifest.webmanifest" />
   <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
   <link rel="icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://accounts.google.com" />
   <link rel="stylesheet" href="styles.css" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+  <!-- inline icon sprite -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <g id="i-video"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="3"/></g>
+      <g id="i-photo"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></g>
+      <g id="i-mic"><rect x="9" y="1" width="6" height="13" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></g>
+      <g id="i-image"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.6"/><path d="M21 15l-5-5L5 21"/></g>
+      <g id="i-file"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M13 2v7h7"/></g>
+      <g id="i-sync"><path d="M16 16l-4-4-4 4"/><path d="M12 12v9"/><path d="M20.4 14.9A5 5 0 0 0 18 5.5a7 7 0 0 0-13.4 2A4.5 4.5 0 0 0 4 16"/></g>
+      <g id="i-check"><polyline points="20 6 9 17 4 12"/></g>
+    </defs>
+  </svg>
 </head>
 <body>
   <!-- HOME -->
-  <section id="home" class="screen active">
-    <header class="app-head">
-      <h1>Project Zero</h1>
-      <div id="status" class="status">Ready</div>
+  <main id="home" class="screen active">
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo"></span>
+        <div>
+          <h1>Project Zero</h1>
+          <p id="todayLabel" class="muted"></p>
+        </div>
+      </div>
+      <button id="status" class="pill">Ready</button>
     </header>
-    <div class="grid">
-      <button class="tile" data-go="video"><span class="ic">🎥</span><span>Record Video</span></button>
-      <button class="tile" data-go="photo"><span class="ic">📷</span><span>Take Photo</span></button>
-      <button class="tile" data-go="voice"><span class="ic">🎙️</span><span>Voice Note</span></button>
-      <button class="tile" id="pickImage"><span class="ic">🖼️</span><span>Upload Image</span></button>
-      <button class="tile" id="pickFile"><span class="ic">📄</span><span>Upload File</span></button>
-      <button class="tile" id="uploadAll"><span class="ic">⬆️</span><span>Upload All</span></button>
-    </div>
+
+    <section class="block">
+      <h2 class="label">Capture</h2>
+      <div class="actions">
+        <button class="action" data-go="video"><span class="ico v"><svg viewBox="0 0 24 24"><use href="#i-video"/></svg></span>Video</button>
+        <button class="action" data-go="photo"><span class="ico p"><svg viewBox="0 0 24 24"><use href="#i-photo"/></svg></span>Photo</button>
+        <button class="action" data-go="voice"><span class="ico m"><svg viewBox="0 0 24 24"><use href="#i-mic"/></svg></span>Voice</button>
+        <button class="action" id="pickImage"><span class="ico i"><svg viewBox="0 0 24 24"><use href="#i-image"/></svg></span>Image</button>
+        <button class="action" id="pickFile"><span class="ico f"><svg viewBox="0 0 24 24"><use href="#i-file"/></svg></span>File</button>
+        <button class="action" id="uploadAll"><span class="ico s"><svg viewBox="0 0 24 24"><use href="#i-sync"/></svg></span>Sync All</button>
+      </div>
+    </section>
+
+    <section class="block card">
+      <div class="card-head">
+        <h2 class="label">Today's Goals</h2>
+        <span id="goalsProgress" class="count">0 / 0</span>
+      </div>
+      <div class="progress"><div id="goalsBar" class="progress-fill"></div></div>
+      <ul id="goalsList" class="list"></ul>
+      <form id="goalForm" class="add-row">
+        <input id="goalInput" placeholder="Add a goal for today…" autocomplete="off" maxlength="120" />
+        <button type="submit" class="add-btn" aria-label="Add goal">+</button>
+      </form>
+    </section>
+
+    <section class="block card">
+      <div class="card-head"><h2 class="label">Notes</h2></div>
+      <ul id="notesList" class="list notes"></ul>
+      <form id="noteForm" class="add-row">
+        <input id="noteInput" placeholder="Jot a thought…" autocomplete="off" maxlength="500" />
+        <button type="submit" class="add-btn" aria-label="Add note">+</button>
+      </form>
+    </section>
+
+    <p class="foot muted">Everything saves to Drive · Personal Brand · Project Zero</p>
+
     <input id="imageInput" type="file" accept="image/*" multiple hidden />
     <input id="fileInput" type="file" multiple hidden />
-  </section>
+  </main>
 
-  <!-- CAMERA (video + photo) -->
-  <section id="camera" class="screen">
-    <button class="back" data-back>‹ Back</button>
+  <!-- CAMERA -->
+  <section id="camera" class="screen fullscreen">
+    <button class="back" data-back><svg viewBox="0 0 24 24" class="chev"><polyline points="15 18 9 12 15 6"/></svg></button>
     <video id="preview" autoplay playsinline muted></video>
-    <div id="camStatus" class="status floating"></div>
-    <div class="controls">
-      <button id="shutter" class="shutter"></button>
-    </div>
+    <div id="camStatus" class="toast"></div>
+    <div class="controls"><button id="shutter" class="shutter"><span class="shutter-core"></span></button></div>
   </section>
 
   <!-- VOICE -->
-  <section id="voice" class="screen">
-    <button class="back" data-back>‹ Back</button>
+  <section id="voice" class="screen fullscreen">
+    <button class="back" data-back><svg viewBox="0 0 24 24" class="chev"><polyline points="15 18 9 12 15 6"/></svg></button>
     <div class="voice-body">
-      <div id="voiceIcon" class="voice-icon">🎙️</div>
+      <div id="voicePulse" class="pulse"><svg viewBox="0 0 24 24" class="mic-big"><use href="#i-mic"/></svg></div>
       <div id="voiceStatus" class="voice-status">Tap to record a voice note</div>
     </div>
-    <div class="controls">
-      <button id="voiceBtn" class="shutter"></button>
-    </div>
-  </section>
-
-  <!-- SIGN IN -->
-  <section id="signin" class="overlay">
-    <h1>Project Zero</h1>
-    <p>Sign in to upload your story to Google Drive.</p>
-    <button id="signinBtn" class="primary">Sign in with Google</button>
-    <p id="authMsg" class="err"></p>
+    <div class="controls"><button id="voiceBtn" class="shutter rec"><span class="shutter-core"></span></button></div>
   </section>
 
   <script src="app.js"></script>
