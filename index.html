@@ -18,6 +18,9 @@
 
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
     <defs>
+      <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#9b6bff"/><stop offset="1" stop-color="#ff5a45"/>
+      </linearGradient>
       <g id="i-video"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="3"/></g>
       <g id="i-photo"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></g>
       <g id="i-mic"><rect x="9" y="1" width="6" height="13" rx="3"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></g>
@@ -27,6 +30,13 @@
       <g id="i-check"><polyline points="20 6 9 17 4 12"/></g>
       <g id="i-history"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7.5V12l3 2"/></g>
       <g id="i-flame"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></g>
+      <g id="i-target"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></g>
+      <g id="i-timer"><path d="M9 2h6"/><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2"/></g>
+      <g id="i-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></g>
+      <g id="i-edit"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></g>
+      <g id="i-bell"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></g>
+      <g id="i-play"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/></g>
+      <g id="i-pause"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></g>
     </defs>
   </svg>
 </head>
@@ -42,6 +52,7 @@
         </div>
       </div>
       <div class="top-actions">
+        <button id="peopleBtn" class="icon-btn" aria-label="People"><svg viewBox="0 0 24 24"><use href="#i-users"/></svg><span id="peopleDot" class="dot" hidden></span></button>
         <button id="historyBtn" class="icon-btn" aria-label="History"><svg viewBox="0 0 24 24"><use href="#i-history"/></svg></button>
         <button id="status" class="pill">Ready</button>
       </div>
@@ -53,6 +64,20 @@
       <span id="coachText" class="coach">Set a goal to start your streak.</span>
       <svg viewBox="0 0 24 24" class="chev-r"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
+
+    <section class="block bigthing">
+      <div class="bt-head"><span class="bt-ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></span><h2 class="label">The one thing</h2></div>
+      <div id="btView" class="bt-view" hidden>
+        <button id="btCheck" class="bt-check" aria-label="Mark done"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></button>
+        <span id="btText" class="bt-text"></span>
+        <button id="btFocus" class="bt-focus"><svg viewBox="0 0 24 24" class="mini"><use href="#i-play"/></svg>Focus</button>
+        <button id="btEdit" class="bt-edit" aria-label="Edit"><svg viewBox="0 0 24 24"><use href="#i-edit"/></svg></button>
+      </div>
+      <form id="btForm" class="bt-form">
+        <input id="btInput" placeholder="If only one thing got done today…" autocomplete="off" maxlength="140" />
+        <button type="submit" class="add-btn" aria-label="Set">+</button>
+      </form>
+    </section>
 
     <section class="block">
       <h2 class="label">Capture</h2>
@@ -77,6 +102,19 @@
         <input id="goalInput" placeholder="Add a goal for today…" autocomplete="off" maxlength="120" />
         <button type="submit" class="add-btn" aria-label="Add goal">+</button>
       </form>
+    </section>
+
+    <section class="block card focus-card">
+      <div class="card-head">
+        <h2 class="label">Focus</h2>
+        <span id="focusToday" class="count">0 min today</span>
+      </div>
+      <div class="focus-presets">
+        <button class="fp" data-min="15">15<small>min</small></button>
+        <button class="fp" data-min="25">25<small>min</small></button>
+        <button class="fp" data-min="50">50<small>min</small></button>
+      </div>
+      <p class="focus-hint muted small">Pick a block, lock in on one thing. A timer beats willpower.</p>
     </section>
 
     <section class="block card">
@@ -127,9 +165,9 @@
       </div>
       <div class="mo-stats">
         <div class="stat"><b id="stDays">0</b><span>Active days</span></div>
+        <div class="stat"><b id="stFocus">0</b><span>Min focused</span></div>
         <div class="stat"><b id="stGoals">0</b><span>Goals done</span></div>
         <div class="stat"><b id="stClips">0</b><span>Clips</span></div>
-        <div class="stat"><b id="stRate">0%</b><span>Completion</span></div>
       </div>
     </div>
   </section>
@@ -151,6 +189,62 @@
     </div>
     <div class="controls"><button id="voiceBtn" class="shutter rec"><span class="shutter-core"></span></button></div>
   </section>
+
+  <!-- FOCUS TIMER -->
+  <section id="focus" class="screen fullscreen focus-screen">
+    <button class="back" data-back><svg viewBox="0 0 24 24" class="chev"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="focus-body">
+      <p id="focusTask" class="focus-task"></p>
+      <div class="focus-ring">
+        <svg viewBox="0 0 220 220" class="ring-svg">
+          <circle class="ring-bg" cx="110" cy="110" r="100"/>
+          <circle id="ringFg" class="ring-fg" cx="110" cy="110" r="100"/>
+        </svg>
+        <div class="focus-time" id="focusTime">25:00</div>
+      </div>
+      <p id="focusState" class="focus-msg muted">Stay with it. One block, that's all.</p>
+      <div class="focus-controls">
+        <button id="focusToggle" class="focus-main"><svg viewBox="0 0 24 24"><use href="#i-pause"/></svg><span>Pause</span></button>
+        <button id="focusDone" class="focus-end">End</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- PEOPLE CRM -->
+  <section id="people" class="screen sheet">
+    <header class="sheet-head">
+      <button class="back small" data-back><svg viewBox="0 0 24 24" class="chev"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <h2>People</h2>
+      <button id="addPersonBtn" class="icon-btn" aria-label="Add person"><svg viewBox="0 0 24 24"><use href="#i-edit"/></svg></button>
+    </header>
+    <div class="people-wrap">
+      <div id="followUps" class="followups" hidden></div>
+      <div id="peopleList" class="people-list"></div>
+    </div>
+  </section>
+
+  <!-- PERSON EDITOR -->
+  <section id="personEdit" class="screen sheet">
+    <header class="sheet-head">
+      <button class="back small" id="personCancel"><svg viewBox="0 0 24 24" class="chev"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <h2 id="personTitle">New person</h2>
+      <button id="personDelete" class="icon-btn danger" aria-label="Delete" hidden>×</button>
+    </header>
+    <form id="personForm" class="person-form">
+      <label class="fld"><span>Name</span><input id="pName" maxlength="80" autocomplete="off" placeholder="Who is this?" /></label>
+      <label class="fld"><span>Relationship</span>
+        <div id="pTags" class="tag-row"></div>
+      </label>
+      <label class="fld"><span>Context: how you know them, what matters</span><textarea id="pNote" rows="3" maxlength="600" placeholder="Met at…, working on…, last talked about…"></textarea></label>
+      <div class="fld-row">
+        <label class="fld"><span>Last contact</span><input id="pLast" type="date" /></label>
+        <label class="fld"><span>Follow up by</span><input id="pNext" type="date" /></label>
+      </div>
+      <button type="submit" class="save-btn">Save person</button>
+    </form>
+  </section>
+
+  <div id="confetti" class="confetti" aria-hidden="true"></div>
 
   <script src="app.js"></script>
 </body>
