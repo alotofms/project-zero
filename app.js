@@ -219,6 +219,75 @@ async function syncJournal() {
   try { const token = await ensureToken(); const folderId = await resolveDailyFolder(new Date(), token); await upsertTextFile('Journal — ' + TODAY + '.txt', L.join('\n'), folderId, token); } catch (e) {}
 }
 
+/* ---------- history ---------- */
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function dateFmt(ds) { const d = new Date(ds + 'T00:00:00'); return isNaN(d) ? ds : d.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }); }
+function localHistoryDays() {
+  const map = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    const mg = k && k.match(/^goals_(\d{4}-\d{2}-\d{2})$/);
+    const mn = k && k.match(/^notes_(\d{4}-\d{2}-\d{2})$/);
+    if (mg) (map[mg[1]] = map[mg[1]] || {}).goals = lsGet(k);
+    if (mn) (map[mn[1]] = map[mn[1]] || {}).notes = lsGet(k);
+  }
+  return Object.keys(map).map((date) => ({ date, goals: map[date].goals || [], notes: map[date].notes || [] }));
+}
+function parseJournal(txt) {
+  const goals = [], notes = []; let sec = '';
+  txt.split('\n').forEach((line) => {
+    const l = line.trim();
+    if (l === 'GOALS') { sec = 'g'; return; }
+    if (l === 'NOTES') { sec = 'n'; return; }
+    if (!l || l === '(none)' || l.startsWith('PROJECT ZERO')) return;
+    if (sec === 'g') goals.push({ t: l.replace(/^\[[ x]\]\s*/, ''), done: l.startsWith('[x]') });
+    else if (sec === 'n') notes.push({ t: l.replace(/^•\s*/, '') });
+  });
+  return { goals, notes };
+}
+async function loadDriveHistory() {
+  const token = await ensureToken();
+  if (!pzId) { const pb = await findOrCreateFolder('Personal Brand', 'root', token); pzId = await findOrCreateFolder('Project Zero', pb, token); }
+  const q = `'${pzId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  const fr = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)&orderBy=name desc&pageSize=120`, { headers: { Authorization: 'Bearer ' + token } });
+  const folders = ((await fr.json()).files || []).filter((f) => /^\d{4}-\d{2}-\d{2}$/.test(f.name));
+  const out = [];
+  for (const f of folders) {
+    const jq = `name contains 'Journal' and '${f.id}' in parents and trashed=false`;
+    const jr = await fetch(`https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(jq)}&fields=files(id)`, { headers: { Authorization: 'Bearer ' + token } });
+    const jf = ((await jr.json()).files || [])[0];
+    let goals = [], notes = [];
+    if (jf) { try { const cr = await fetch(`https://www.googleapis.com/drive/v3/files/${jf.id}?alt=media`, { headers: { Authorization: 'Bearer ' + token } }); ({ goals, notes } = parseJournal(await cr.text())); } catch (e) {} }
+    out.push({ date: f.name, goals, notes });
+  }
+  return out;
+}
+function paintHistory(days, hint) {
+  $('historyHint').textContent = hint || '';
+  days = days.slice().sort((a, b) => b.date.localeCompare(a.date));
+  const el = $('historyList');
+  if (!days.length) { el.innerHTML = '<p class="empty">No days yet — set some goals today.</p>'; return; }
+  el.innerHTML = days.map((d) => {
+    const g = d.goals.length ? d.goals.map((x) => `<div class="h-item${x.done ? ' done' : ''}"><span class="h-mark ${x.done ? 'ok' : 'todo'}">${x.done ? '✓' : '○'}</span><span>${esc(x.t)}</span></div>`).join('') : '<div class="day-empty">No goals</div>';
+    const n = d.notes.length ? d.notes.map((x) => `<div class="h-item"><span class="h-mark note">•</span><span>${esc(x.t)}</span></div>`).join('') : '<div class="day-empty">No notes</div>';
+    return `<div class="day-card"><div class="day-date">${dateFmt(d.date)}</div><div class="day-sub">Goals</div>${g}<div class="day-sub">Notes</div>${n}</div>`;
+  }).join('');
+}
+async function openHistory() {
+  show('history');
+  const local = localHistoryDays();
+  const today = { date: TODAY, goals, notes };
+  const merged = local.filter((d) => d.date !== TODAY).concat([today]);
+  paintHistory(merged, accessToken ? 'Syncing from Drive…' : 'On this device');
+  if (!accessToken) return;
+  try {
+    const drive = await loadDriveHistory();
+    const byDate = {}; merged.forEach((d) => { byDate[d.date] = d; });
+    drive.forEach((d) => { if (d.date !== TODAY) byDate[d.date] = d; });
+    paintHistory(Object.values(byDate), 'Synced from Drive');
+  } catch (e) {}
+}
+
 /* ---------- navigation ---------- */
 function show(id) { document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active')); $(id).classList.add('active'); }
 
@@ -243,6 +312,8 @@ $('uploadAll').addEventListener('click', () => { if (requireAuth()) { flash('Upl
 imageInput.addEventListener('change', () => { [...imageInput.files].forEach((f) => enqueue(f, f.name || fname('jpg'), f.type || 'image/jpeg')); imageInput.value = ''; });
 fileInput.addEventListener('change', () => { [...fileInput.files].forEach((f) => enqueue(f, f.name || fname('dat'), f.type || 'application/octet-stream')); fileInput.value = ''; });
 statusEl.addEventListener('click', () => { accessToken ? processQueue() : requestToken('').catch(() => {}); });
+$('historyBtn').addEventListener('click', openHistory);
+$('historyLink').addEventListener('click', openHistory);
 goalForm.addEventListener('submit', (e) => { e.preventDefault(); const v = goalInput.value.trim(); if (!v) return; goals.push({ t: v, done: false }); goalInput.value = ''; saveGoals(); });
 noteForm.addEventListener('submit', (e) => { e.preventDefault(); const v = noteInput.value.trim(); if (!v) return; notes.push({ t: v, ts: Date.now() }); noteInput.value = ''; saveNotes(); });
 
