@@ -17,6 +17,7 @@ const notesList = $('notesList'), noteInput = $('noteInput'), noteForm = $('note
 /* ---------- state ---------- */
 let accessToken = null, tokenExpiry = 0, tokenClient = null, tokenResolvers = [];
 let stream = null, mediaRecorder = null, recordedChunks = [];
+let facing = 'user', camFlipping = false;
 let voiceStream = null, voiceRec = null, voiceChunks = [];
 let camMode = null, lastMsg = 'Ready', processing = false, db = null, flashT = null;
 let pzId = null; const dayCache = {};
@@ -136,21 +137,43 @@ function setCam(msg) { camStatus.textContent = msg; camStatus.classList.toggle('
 function flash(m) { lastMsg = m; render(); clearTimeout(flashT); flashT = setTimeout(() => { if (lastMsg === m) { lastMsg = 'Ready'; render(); } }, 2200); }
 
 /* ---------- camera ---------- */
+function stopCameraStream() { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } }
 async function startCamera() {
-  try { stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: true }); preview.srcObject = stream; }
-  catch (e) { setCam('Allow camera + mic, then reopen'); }
+  stopCameraStream();
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: facing } }, audio: true });
+    preview.srcObject = stream;
+    preview.classList.toggle('mirror', facing === 'user');
+  } catch (e) { setCam('Allow camera + mic, then reopen'); }
 }
-function stopCamera() { if (stream) { stream.getTracks().forEach((t) => t.stop()); stream = null; } preview.srcObject = null; }
-function toggleVideo() {
+function stopCamera() { stopCameraStream(); preview.srcObject = null; }
+function isRecording() { return !!(mediaRecorder && mediaRecorder.state === 'recording'); }
+function startVideoRecording() {
   if (!stream) return;
-  if (mediaRecorder && mediaRecorder.state !== 'inactive') { mediaRecorder.stop(); shutter.classList.remove('recording'); }
-  else {
-    recordedChunks = [];
-    mediaRecorder = new MediaRecorder(stream, VIDEO_MIME ? { mimeType: VIDEO_MIME } : undefined);
-    mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recordedChunks.push(e.data); };
-    mediaRecorder.onstop = () => { const b = new Blob(recordedChunks, { type: VIDEO_MIME || 'video/mp4' }); enqueue(b, fname(videoExt), b.type); };
-    mediaRecorder.start(); shutter.classList.add('recording');
-  }
+  recordedChunks = [];
+  mediaRecorder = new MediaRecorder(stream, VIDEO_MIME ? { mimeType: VIDEO_MIME } : undefined);
+  mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recordedChunks.push(e.data); };
+  mediaRecorder.onstop = () => { const b = new Blob(recordedChunks, { type: VIDEO_MIME || 'video/mp4' }); if (b.size) enqueue(b, fname(videoExt), b.type); };
+  mediaRecorder.start(); shutter.classList.add('recording');
+}
+function stopVideoRecording() {
+  return new Promise((resolve) => {
+    if (!mediaRecorder || mediaRecorder.state === 'inactive') { resolve(); return; }
+    const prev = mediaRecorder.onstop;
+    mediaRecorder.onstop = (ev) => { if (prev) prev(ev); resolve(); };
+    mediaRecorder.stop(); shutter.classList.remove('recording');
+  });
+}
+function toggleVideo() { isRecording() ? stopVideoRecording() : startVideoRecording(); }
+async function flipCamera() {
+  if (camFlipping) return; camFlipping = true;
+  const wasRecording = isRecording();
+  try {
+    if (wasRecording) await stopVideoRecording();   // finalize the current clip first (no footage lost)
+    facing = (facing === 'user') ? 'environment' : 'user';
+    await startCamera();
+    if (wasRecording && stream) { startVideoRecording(); setCam('Flipped — recording'); }
+  } finally { camFlipping = false; }
 }
 function takePhoto() {
   if (!preview.videoWidth) return;
@@ -535,7 +558,7 @@ document.querySelectorAll('[data-go]').forEach((b) => b.addEventListener('click'
   if (!requireAuth()) return;
   const go = b.getAttribute('data-go');
   if (go === 'voice') { show('voice'); voiceStatus.textContent = 'Tap to record a voice note'; voicePulse.classList.remove('on'); return; }
-  camMode = go; show('camera'); setCam(''); startCamera(); render();
+  camMode = go; facing = 'user'; show('camera'); setCam(''); startCamera(); render();
 }));
 document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('click', () => {
   if ($('focus').classList.contains('active')) stopFocus(true);
@@ -545,6 +568,7 @@ document.querySelectorAll('[data-back]').forEach((b) => b.addEventListener('clic
   stopCamera(); camMode = null; show('home'); render();
 }));
 shutter.addEventListener('click', () => { camMode === 'video' ? toggleVideo() : takePhoto(); });
+$('flipBtn').addEventListener('click', flipCamera);
 voiceBtn.addEventListener('click', toggleVoice);
 $('pickImage').addEventListener('click', () => { if (requireAuth()) imageInput.click(); });
 $('pickFile').addEventListener('click', () => { if (requireAuth()) fileInput.click(); });

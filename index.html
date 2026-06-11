@@ -37,6 +37,7 @@
       <g id="i-bell"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></g>
       <g id="i-play"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/></g>
       <g id="i-pause"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></g>
+      <g id="i-flip"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></g>
     </defs>
   </svg>
 </head>
@@ -175,6 +176,7 @@
   <!-- CAMERA -->
   <section id="camera" class="screen fullscreen">
     <button class="back" data-back><svg viewBox="0 0 24 24" class="chev"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <button id="flipBtn" class="flip-btn" aria-label="Flip camera"><svg viewBox="0 0 24 24"><use href="#i-flip"/></svg></button>
     <video id="preview" autoplay playsinline muted></video>
     <div id="camStatus" class="toast"></div>
     <div class="controls"><button id="shutter" class="shutter"><span class="shutter-core"></span></button></div>

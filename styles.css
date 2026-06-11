@@ -145,6 +145,12 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 
 /* camera / voice */
 #preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+#preview.mirror { transform: scaleX(-1); }
+.flip-btn { position: absolute; top: calc(var(--sa-t) + 12px); right: 14px; z-index: 4; width: 44px; height: 44px;
+  border-radius: 50%; border: none; background: rgba(0, 0, 0, .42); color: #fff; cursor: pointer;
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); display: grid; place-items: center; transition: transform .12s; }
+.flip-btn svg { width: 22px; height: 22px; }
+.flip-btn:active { transform: scale(.9) rotate(-18deg); }
 .back { position: absolute; top: calc(var(--sa-t) + 12px); left: 14px; z-index: 4; width: 42px; height: 42px;
   border-radius: 50%; border: none; background: rgba(0, 0, 0, .42); color: #fff; cursor: pointer;
   backdrop-filter: blur(10px); display: grid; place-items: center; }
