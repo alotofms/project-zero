@@ -18,6 +18,7 @@ const notesList = $('notesList'), noteInput = $('noteInput'), noteForm = $('note
 let accessToken = null, tokenExpiry = 0, tokenClient = null, tokenResolvers = [];
 let stream = null, mediaRecorder = null, recordedChunks = [];
 let facing = 'user', camFlipping = false;
+let curRid = null, curRecName = '', curRecMime = '';
 let voiceStream = null, voiceRec = null, voiceChunks = [];
 let camMode = null, lastMsg = 'Ready', processing = false, db = null, flashT = null;
 let pzId = null; const dayCache = {};
@@ -99,11 +100,46 @@ async function upsertTextFile(name, content, folderId, token) {
 }
 
 /* ---------- queue (IndexedDB) ---------- */
-function openDB() { return new Promise((res, rej) => { const r = indexedDB.open('projectzero', 1); r.onupgradeneeded = () => r.result.createObjectStore('uploads', { keyPath: 'id' }); r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); }
+function openDB() {
+  return new Promise((res, rej) => {
+    const r = indexedDB.open('projectzero', 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains('uploads')) d.createObjectStore('uploads', { keyPath: 'id' });
+      // crash-safe recording: video chunks streamed here during capture
+      if (!d.objectStoreNames.contains('recparts')) { const s = d.createObjectStore('recparts', { keyPath: 'seq', autoIncrement: true }); s.createIndex('rid', 'rid', { unique: false }); }
+      if (!d.objectStoreNames.contains('recmeta')) d.createObjectStore('recmeta', { keyPath: 'rid' });
+    };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+}
 const txDone = (t) => new Promise((res, rej) => { t.oncomplete = () => res(); t.onerror = () => rej(t.error); });
 const qAdd = (item) => { const t = db.transaction('uploads', 'readwrite'); t.objectStore('uploads').put(item); return txDone(t); };
 const qDel = (id) => { const t = db.transaction('uploads', 'readwrite'); t.objectStore('uploads').delete(id); return txDone(t); };
 const qAll = () => new Promise((res) => { const out = []; const c = db.transaction('uploads').objectStore('uploads').openCursor(); c.onsuccess = (e) => { const cur = e.target.result; if (cur) { out.push(cur.value); cur.continue(); } else res(out); }; c.onerror = () => res(out); });
+
+/* recording-part persistence (survives a crash / reload mid-record) */
+const recMetaPut = (m) => { const t = db.transaction('recmeta', 'readwrite'); t.objectStore('recmeta').put(m); return txDone(t); };
+const recMetaDel = (rid) => { const t = db.transaction('recmeta', 'readwrite'); t.objectStore('recmeta').delete(rid); return txDone(t); };
+const recMetaAll = () => new Promise((res) => { const out = []; const c = db.transaction('recmeta').objectStore('recmeta').openCursor(); c.onsuccess = (e) => { const cur = e.target.result; if (cur) { out.push(cur.value); cur.continue(); } else res(out); }; c.onerror = () => res(out); });
+const recPartAdd = (rid, blob) => { const t = db.transaction('recparts', 'readwrite'); t.objectStore('recparts').add({ rid, blob }); return txDone(t); };
+const recPartsFor = (rid) => new Promise((res) => { const out = []; const c = db.transaction('recparts').objectStore('recparts').index('rid').openCursor(IDBKeyRange.only(rid)); c.onsuccess = (e) => { const cur = e.target.result; if (cur) { out.push(cur.value.blob); cur.continue(); } else res(out); }; c.onerror = () => res(out); });
+const recPartsDel = (rid) => new Promise((res) => { const s = db.transaction('recparts', 'readwrite').objectStore('recparts'); const c = s.index('rid').openCursor(IDBKeyRange.only(rid)); c.onsuccess = (e) => { const cur = e.target.result; if (cur) { s.delete(cur.primaryKey); cur.continue(); } else res(); }; c.onerror = () => res(); });
+// assemble persisted chunks for a recording into one blob, queue it for upload, then clear the parts
+async function finalizeRecording(rid, name, mime) {
+  if (!db) return;
+  try { const parts = await recPartsFor(rid); if (parts.length) { const b = new Blob(parts, { type: mime }); if (b.size) await enqueue(b, name, mime); } } catch (e) {}
+  try { await recPartsDel(rid); await recMetaDel(rid); } catch (e) {}
+}
+// on launch: recover any recording that was interrupted by a crash/reload
+async function recoverRecordings() {
+  if (!db) return;
+  try {
+    const metas = await recMetaAll();
+    for (const m of metas) await finalizeRecording(m.rid, m.name, m.mime);
+    if (metas.length) flash('Recovered ' + metas.length + ' clip' + (metas.length > 1 ? 's' : ''));
+  } catch (e) {}
+}
 async function enqueue(blob, name, mime) {
   const id = crypto.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.round(performance.now());
   await qAdd({ id, name, mime, blob, createdAt: Date.now() });
@@ -150,11 +186,21 @@ function stopCamera() { stopCameraStream(); preview.srcObject = null; }
 function isRecording() { return !!(mediaRecorder && mediaRecorder.state === 'recording'); }
 function startVideoRecording() {
   if (!stream) return;
+  curRid = uid(); curRecName = fname(videoExt); curRecMime = VIDEO_MIME || 'video/mp4';
   recordedChunks = [];
+  if (db) recMetaPut({ rid: curRid, name: curRecName, mime: curRecMime, createdAt: Date.now() }).catch(() => {});
   mediaRecorder = new MediaRecorder(stream, VIDEO_MIME ? { mimeType: VIDEO_MIME } : undefined);
-  mediaRecorder.ondataavailable = (e) => { if (e.data && e.data.size) recordedChunks.push(e.data); };
-  mediaRecorder.onstop = () => { const b = new Blob(recordedChunks, { type: VIDEO_MIME || 'video/mp4' }); if (b.size) enqueue(b, fname(videoExt), b.type); };
-  mediaRecorder.start(); shutter.classList.add('recording');
+  const rid = curRid, name = curRecName, mime = curRecMime;   // bind this recording so a flip's new one can't clobber it
+  mediaRecorder.ondataavailable = (e) => {
+    if (!e.data || !e.data.size) return;
+    if (db) recPartAdd(rid, e.data).catch(() => {}); else recordedChunks.push(e.data);
+  };
+  mediaRecorder.onstop = () => {
+    if (db) finalizeRecording(rid, name, mime);
+    else { const b = new Blob(recordedChunks, { type: mime }); if (b.size) enqueue(b, name, mime); }
+  };
+  mediaRecorder.start(3000);   // emit a chunk every 3s -> persisted to disk, low memory, crash-safe
+  shutter.classList.add('recording');
 }
 function stopVideoRecording() {
   return new Promise((resolve) => {
@@ -612,6 +658,7 @@ $('personForm').addEventListener('submit', (e) => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   if (navigator.storage && navigator.storage.persist) { try { navigator.storage.persist(); } catch (e) {} }
   try { db = await openDB(); } catch (e) {}
+  recoverRecordings();   // re-queue any clip interrupted by a crash/reload
   renderGoals(); renderNotes(); renderBig(); renderFocusToday(); renderPeople(); updatePeopleDot(); updateMomentum();
   await render();
   whenGIS(initAuth);
