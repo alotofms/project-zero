@@ -295,6 +295,12 @@ async function syncJournal() {
   notes.length ? notes.forEach((n) => L.push('• ' + n.t)) : L.push('(none)');
   const fm = focusToday();
   if (fm) L.push('', 'FOCUS', fm + ' minutes');
+  L.push('', 'HABITS');
+  HABITS.forEach((h) => L.push((habitsDone.includes(h) ? '[x] ' : '[ ] ') + h));
+  if (reflect && (reflect.ans || reflect.note)) {
+    L.push('', 'REFLECTION', 'Did what goals required: ' + (reflect.ans || '-'));
+    if (reflect.note) L.push('Note: ' + reflect.note);
+  }
   try { const token = await ensureToken(); const folderId = await resolveDailyFolder(new Date(), token); await upsertTextFile('Journal - ' + TODAY + '.txt', L.join('\n'), folderId, token); } catch (e) {}
 }
 
@@ -456,7 +462,7 @@ const shift = (ds, days) => { const d = new Date(ds + 'T00:00:00'); d.setDate(d.
 function activeOn(ds) {
   const b = objGet('big_' + ds);
   return lsGet('goals_' + ds).length > 0 || lsGet('notes_' + ds).length > 0 || captureCount(ds) > 0
-    || (objGet('focus_' + ds) || []).length > 0 || !!(b && b.t);
+    || (objGet('focus_' + ds) || []).length > 0 || !!(b && b.t) || lsGet('habits_' + ds).length > 0;
 }
 function currentStreak() {
   let ds = TODAY; if (!activeOn(ds)) ds = shift(ds, -1);
@@ -470,6 +476,7 @@ function allActiveDates() {
     else if ((m = k.match(/^notes_(\d{4}-\d{2}-\d{2})$/)) && lsGet(k).length) set.add(m[1]);
     else if ((m = k.match(/^cap_(\d{4}-\d{2}-\d{2})$/)) && +localStorage.getItem(k) > 0) set.add(m[1]);
     else if ((m = k.match(/^focus_(\d{4}-\d{2}-\d{2})$/)) && (objGet(k) || []).length) set.add(m[1]);
+    else if ((m = k.match(/^habits_(\d{4}-\d{2}-\d{2})$/)) && lsGet(k).length) set.add(m[1]);
     else if ((m = k.match(/^big_(\d{4}-\d{2}-\d{2})$/)) && objGet(k) && objGet(k).t) set.add(m[1]);
   }
   return set;
@@ -543,6 +550,9 @@ function parseJournal(txt) {
     if (l === 'GOALS') { sec = 'g'; return; }
     if (l === 'NOTES') { sec = 'n'; return; }
     if (l === 'FOCUS') { sec = 'f'; return; }
+    if (l === 'HABITS') { sec = 'h'; return; }
+    if (l === 'REFLECTION') { sec = 'r'; return; }
+    if (sec === 'h' || sec === 'r') return;
     if (!l || l === '(none)' || l.startsWith('PROJECT ZERO')) return;
     if (sec === 'b') big = { t: l.replace(/^\[[ x]\]\s*/, ''), done: l.startsWith('[x]') };
     else if (sec === 'g') goals.push({ t: l.replace(/^\[[ x]\]\s*/, ''), done: l.startsWith('[x]') });
@@ -596,6 +606,120 @@ async function openHistory() {
   } catch (e) {}
 }
 
+/* ---------- framework: principles, habits, act-now, reflection ---------- */
+const PRINCIPLES = [
+  ['Действия стоят больше слов.', 'Псевдо-friends taught you this. Watch what people do, not what they say.'],
+  ['Growth happens in isolation.', 'You wrote it three times. Less crowd, more work.'],
+  ['You are half the average of the 4 people you talk to most.', 'Choose them on purpose.'],
+  ['Cold analysis is the secret to understanding people.', 'Emotion and excitement cloud it. Think with your head, not your heart.'],
+  ["Attract, don't chase.", 'Law of detachment. Focus on inputs, let the rest come.'],
+  ['Action or no action are the only two real variables.', 'Failure and success are just flavors of action. The only question: did you act?'],
+  ['The less you speak, the more powerful you look.', 'Stay quiet about your progress. Let results speak. Unreachable = powerful.'],
+  ['Obstacles are for you, not against you.', 'Every wall is reps.'],
+  ['You are the chosen one.', 'Act like your dream version would, right now.'],
+  ["Don't make empty promises.", 'Always deliver on your words. This is your whole reputation.'],
+  ['Be consistent.', 'Train your willpower and resistance. Boring beats intense.'],
+  ['Wide circle of acquaintances, small circle of friends.', "Don't try to befriend everyone."],
+  ['At this stage, girls are a distraction.', "The right one comes when it's time. If one doesn't value you, thousands would."],
+  ['Be grateful to your grandmother.', 'She funds this. None of it runs without her. Fix how you talk to her on the phone.'],
+  ["Don't reward good actions with bad ones.", 'A good action is its own reward.'],
+  ['You become whoever you want to impress.', 'So aim high.'],
+  ['Use dark motivation.', 'Make the ones who underestimated you regret it.'],
+  ['Do the thing you fear most.', "That's where the growth is hiding."],
+  ["Don't half-ass it.", 'Do it once, right, so you never have to come back to it.'],
+  ['Focus on ONE thing.', 'Close the side projects. Pick the one business that pays.'],
+];
+const HABITS = [
+  '4 hours of deep work',
+  'One thing at a time. No multitasking.',
+  'Did outreach / cold call',
+  'Stayed quiet about my progress',
+  'Low tone, slow speech, posture, said no',
+  'Stretched for growth',
+  '15 min before sleep: tracks + visualize the dream',
+  'Meditated',
+  'Journaled',
+  'No sugar / gluten / lactose',
+  "Didn't reward myself with bad habits",
+  'Sleeping 8h, same time tonight',
+];
+const DEFAULT_TASKS = [
+  'Yacht with Lyosha (Tue)',
+  'Grab справка from ТЦК (while in Shostka)',
+  'Find uni admission docs + decide where to apply',
+  'Beat Bot: continue or close. Decide.',
+  'Venu AI: sell hard or flip for $300-500',
+  'Maxim: finish the work + take the bigger offer',
+  'Close side projects. Focus on ONE.',
+  "Ulya's birthday gift",
+  'Book the cut with Dino',
+  'Finish 3 Hormozi books',
+  'Buy grooming + growth supplements',
+];
+
+function dayOfYear() { const d = new Date(); const s = new Date(d.getFullYear(), 0, 0); return Math.floor((d - s) / 86400000); }
+
+/* principle of the day */
+let principleOff = +(localStorage.getItem('principleOff') || 0);
+function principleIdx() { const n = PRINCIPLES.length; return ((dayOfYear() + principleOff) % n + n) % n; }
+function renderPrinciple() { const p = PRINCIPLES[principleIdx()]; $('principleQuote').textContent = p[0]; $('principleSub').textContent = p[1]; }
+function renderPrinciplesScreen() {
+  const cur = principleIdx();
+  $('principlesList').innerHTML = PRINCIPLES.map((p, i) =>
+    `<div class="principle-item${i === cur ? ' today-p' : ''}">${i === cur ? '<span class="pi-tag">Today</span>' : ''}<div class="pi-q">${esc(p[0])}</div><div class="pi-s">${esc(p[1])}</div></div>`
+  ).join('');
+}
+
+/* daily habits — done-state stored by text, resets each day with the per-day key */
+let habitsDone = lsGet('habits_' + TODAY);
+function saveHabits() { lsSet('habits_' + TODAY, habitsDone); renderHabits(); scheduleJournal(); updateMomentum(); }
+function renderHabits() {
+  const wrap = $('habitsList'); wrap.innerHTML = '';
+  HABITS.forEach((h) => {
+    const done = habitsDone.includes(h);
+    const li = document.createElement('li'); li.className = 'item' + (done ? ' done' : '');
+    li.innerHTML = '<button class="check"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></button><span class="item-text"></span>';
+    li.querySelector('.item-text').textContent = h;
+    li.querySelector('.check').onclick = () => {
+      if (habitsDone.includes(h)) habitsDone = habitsDone.filter((x) => x !== h);
+      else { habitsDone.push(h); reward(28); }
+      saveHabits();
+    };
+    wrap.appendChild(li);
+  });
+  const done = HABITS.filter((h) => habitsDone.includes(h)).length;
+  $('habitsProgress').textContent = `${done} / ${HABITS.length}`;
+  $('habitsBar').style.width = (done / HABITS.length * 100) + '%';
+}
+
+/* act-now tasks — persistent backlog, survives midnight (unlike goals) */
+let tasks = objGet('tasks');
+if (!Array.isArray(tasks)) { tasks = DEFAULT_TASKS.map((t) => ({ id: uid(), t, done: false })); localStorage.setItem('tasks', JSON.stringify(tasks)); }
+function saveTasks() { localStorage.setItem('tasks', JSON.stringify(tasks)); renderTasks(); }
+function renderTasks() {
+  const wrap = $('tasksList'); wrap.innerHTML = '';
+  if (!tasks.length) wrap.innerHTML = '<li class="empty">Nothing queued. Add what needs doing.</li>';
+  tasks.forEach((t, idx) => {
+    const li = document.createElement('li'); li.className = 'item' + (t.done ? ' done' : '');
+    li.innerHTML = '<button class="check"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg></button><span class="item-text"></span><button class="del">×</button>';
+    li.querySelector('.item-text').textContent = t.t;
+    li.querySelector('.check').onclick = () => { const nd = !tasks[idx].done; tasks[idx].done = nd; saveTasks(); if (nd) reward(40); };
+    li.querySelector('.del').onclick = () => { tasks.splice(idx, 1); saveTasks(); };
+    wrap.appendChild(li);
+  });
+  const done = tasks.filter((t) => t.done).length;
+  $('tasksProgress').textContent = `${done} / ${tasks.length}`;
+}
+
+/* evening reflection — per day */
+let reflect = objGet('reflect_' + TODAY) || { ans: null, note: '' };
+function saveReflect() { localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); renderReflect(); scheduleJournal(); }
+function renderReflect() {
+  $('reflectYes').classList.toggle('on', reflect.ans === 'yes');
+  $('reflectNo').classList.toggle('on', reflect.ans === 'no');
+  if ($('reflectNote').value !== (reflect.note || '')) $('reflectNote').value = reflect.note || '';
+}
+
 /* ---------- navigation ---------- */
 function show(id) { document.querySelectorAll('.screen').forEach((s) => s.classList.remove('active')); $(id).classList.add('active'); }
 
@@ -628,6 +752,14 @@ $('momentumStrip').addEventListener('click', openMomentum);
 goalForm.addEventListener('submit', (e) => { e.preventDefault(); const v = goalInput.value.trim(); if (!v) return; goals.push({ t: v, done: false }); goalInput.value = ''; saveGoals(); });
 noteForm.addEventListener('submit', (e) => { e.preventDefault(); const v = noteInput.value.trim(); if (!v) return; notes.push({ t: v, ts: Date.now() }); noteInput.value = ''; saveNotes(); });
 
+/* framework */
+$('principleMore').addEventListener('click', () => { principleOff = (principleOff + 1) % PRINCIPLES.length; localStorage.setItem('principleOff', principleOff); renderPrinciple(); });
+$('principleOpen').addEventListener('click', () => { renderPrinciplesScreen(); show('principles'); });
+$('taskForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('taskInput').value.trim(); if (!v) return; tasks.push({ id: uid(), t: v, done: false }); $('taskInput').value = ''; saveTasks(); });
+$('reflectYes').addEventListener('click', () => { reflect.ans = reflect.ans === 'yes' ? null : 'yes'; saveReflect(); if (reflect.ans === 'yes') reward(50); });
+$('reflectNo').addEventListener('click', () => { reflect.ans = reflect.ans === 'no' ? null : 'no'; saveReflect(); });
+$('reflectNote').addEventListener('input', (e) => { reflect.note = e.target.value; localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); scheduleJournal(); });
+
 /* the one thing */
 $('btForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('btInput').value.trim(); if (!v) return; big = { t: v, done: false }; $('btInput').value = ''; saveBig(); });
 $('btCheck').addEventListener('click', () => { if (!big) return; big.done = !big.done; saveBig(); if (big.done) reward(60); });
@@ -659,7 +791,8 @@ $('personForm').addEventListener('submit', (e) => {
   if (navigator.storage && navigator.storage.persist) { try { navigator.storage.persist(); } catch (e) {} }
   try { db = await openDB(); } catch (e) {}
   recoverRecordings();   // re-queue any clip interrupted by a crash/reload
-  renderGoals(); renderNotes(); renderBig(); renderFocusToday(); renderPeople(); updatePeopleDot(); updateMomentum();
+  renderGoals(); renderNotes(); renderBig(); renderFocusToday(); renderPeople(); updatePeopleDot();
+  renderPrinciple(); renderHabits(); renderTasks(); renderReflect(); updateMomentum();
   await render();
   whenGIS(initAuth);
 })();

@@ -38,6 +38,9 @@
       <g id="i-play"><path d="M7 4l13 8-13 8z" fill="currentColor" stroke="none"/></g>
       <g id="i-pause"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></g>
       <g id="i-flip"><path d="M11 19H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h5"/><path d="M13 5h7a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-5"/><circle cx="12" cy="12" r="3"/><path d="m18 22-3-3 3-3"/><path d="m6 2 3 3-3 3"/></g>
+      <g id="i-compass"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></g>
+      <g id="i-bolt"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></g>
+      <g id="i-moon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></g>
     </defs>
   </svg>
 </head>
@@ -65,6 +68,20 @@
       <span id="coachText" class="coach">Set a goal to start your streak.</span>
       <svg viewBox="0 0 24 24" class="chev-r"><polyline points="9 18 15 12 9 6"/></svg>
     </button>
+
+    <div class="anchor-line"><span class="anchor-dot"></span>Action or no action. <b>Did you act?</b></div>
+
+    <section class="block principle-card">
+      <div class="pc-head">
+        <span class="pc-ico"><svg viewBox="0 0 24 24"><use href="#i-compass"/></svg></span>
+        <h2 class="label">Principle of the day</h2>
+        <button id="principleMore" class="pc-more">another</button>
+      </div>
+      <button id="principleOpen" class="pc-open">
+        <span class="pc-quote" id="principleQuote"></span>
+        <span class="pc-sub" id="principleSub"></span>
+      </button>
+    </section>
 
     <section class="block bigthing">
       <div class="bt-head"><span class="bt-ico"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg></span><h2 class="label">The one thing</h2></div>
@@ -105,6 +122,27 @@
       </form>
     </section>
 
+    <section class="block card">
+      <div class="card-head">
+        <h2 class="label">Daily Habits</h2>
+        <span id="habitsProgress" class="count">0 / 0</span>
+      </div>
+      <div class="progress"><div id="habitsBar" class="progress-fill"></div></div>
+      <ul id="habitsList" class="list"></ul>
+    </section>
+
+    <section class="block card">
+      <div class="card-head">
+        <h2 class="label">Act now</h2>
+        <span id="tasksProgress" class="count">0 / 0</span>
+      </div>
+      <ul id="tasksList" class="list"></ul>
+      <form id="taskForm" class="add-row">
+        <input id="taskInput" placeholder="Add a task that stays until done…" autocomplete="off" maxlength="140" />
+        <button type="submit" class="add-btn" aria-label="Add task">+</button>
+      </form>
+    </section>
+
     <section class="block card focus-card">
       <div class="card-head">
         <h2 class="label">Focus</h2>
@@ -125,6 +163,19 @@
         <input id="noteInput" placeholder="Jot a thought…" autocomplete="off" maxlength="500" />
         <button type="submit" class="add-btn" aria-label="Add note">+</button>
       </form>
+    </section>
+
+    <section class="block card evening-card">
+      <div class="card-head">
+        <span class="ev-ico"><svg viewBox="0 0 24 24"><use href="#i-moon"/></svg></span>
+        <h2 class="label">Before sleep</h2>
+      </div>
+      <p class="ev-q">Did you do what your goals required today?</p>
+      <div class="yn-row">
+        <button id="reflectYes" class="yn-btn yes">Yes</button>
+        <button id="reflectNo" class="yn-btn no">No</button>
+      </div>
+      <textarea id="reflectNote" placeholder="One line: what moved, what didn't." maxlength="280"></textarea>
     </section>
 
     <button id="historyLink" class="ghost-btn"><svg viewBox="0 0 24 24" class="mini"><use href="#i-history"/></svg> View past days</button>
@@ -171,6 +222,16 @@
         <div class="stat"><b id="stClips">0</b><span>Clips</span></div>
       </div>
     </div>
+  </section>
+
+  <!-- PRINCIPLES -->
+  <section id="principles" class="screen sheet">
+    <header class="sheet-head">
+      <button class="back small" data-back><svg viewBox="0 0 24 24" class="chev"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <h2>Principles</h2>
+      <span class="muted small">from your map</span>
+    </header>
+    <div id="principlesList" class="principles-screen"></div>
   </section>
 
   <!-- CAMERA -->
