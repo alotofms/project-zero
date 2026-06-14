@@ -434,7 +434,10 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .mood-dot { padding: 9px 0; border-radius: 9px; border: 1px solid var(--line-2); background: transparent; color: var(--muted); font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; font-variant-numeric: tabular-nums; transition: transform .2s var(--spring), background .15s, color .15s, border-color .15s; }
 .mood-dot:active { transform: scale(.9); }
 .mood-dot.sel { background: var(--gold); border-color: transparent; color: var(--on-gold); }
-.jr-head { display: flex; align-items: center; gap: 10px; margin: 18px 0 11px; }
-.jr-prompt { flex: 1; font-size: 14px; font-weight: 600; line-height: 1.4; letter-spacing: -.01em; color: var(--text); }
-.evening-card #reflectNote { min-height: 96px; }
-.ev-send { margin-top: 14px; }
+.jr-q { font-size: 14px; font-weight: 600; line-height: 1.4; letter-spacing: -.01em; color: var(--text); margin: 18px 0 10px; }
+.jr-text { width: 100%; background: rgba(255, 255, 255, .035); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px 14px; color: var(--text); font-size: 15px; font-family: inherit; outline: none; resize: none; line-height: 1.45; min-height: 84px; transition: .2s; }
+.jr-text::placeholder { color: var(--faint); }
+.jr-text:focus { border-color: var(--gold-line); background: rgba(255, 255, 255, .055); }
+.ev-save { width: 100%; margin-top: 16px; }
+.save-btn.saved { background: var(--surface-2); color: var(--gold); }
+.ev-send { margin-top: 12px; }

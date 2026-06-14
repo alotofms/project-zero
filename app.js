@@ -337,10 +337,11 @@ async function syncJournal() {
   HABITS.forEach((h) => L.push((habitsDone.includes(h) ? '[x] ' : '[ ] ') + h));
   const kh = khActive();
   if (kh) L.push('', 'KEYSTONE HABIT', (kh.log[TODAY] && kh.log[TODAY].hit ? '[x] ' : '[ ] ') + kh.anchor + ' -> ' + kh.name + ' (streak ' + khStreak(kh) + ')');
-  if (reflect && (reflect.ans || reflect.note || reflect.mood)) {
+  if (reflect && (reflect.ans || reflect.mood || reflect.year || reflect.thoughts)) {
     L.push('', 'REFLECTION', 'Did what goals required: ' + (reflect.ans || '-'));
     if (reflect.mood) L.push('Mental state: ' + reflect.mood + '/10');
-    if (reflect.note) L.push('Journal: ' + reflect.note);
+    if (reflect.year) L.push('Year projection: ' + reflect.year);
+    if (reflect.thoughts) L.push('Thoughts: ' + reflect.thoughts);
   }
   try { const token = await ensureToken(); const folderId = await resolveDailyFolder(new Date(), token); await upsertTextFile('Journal - ' + TODAY + '.txt', L.join('\n'), folderId, token); } catch (e) {}
 }
@@ -764,6 +765,7 @@ function khVote(h, n) {
   const count = (typeof n === 'number' && n > 0) ? n : ((h.log[TODAY] && h.log[TODAY].count) || h.floor);
   h.log[TODAY] = { hit: true, count }; khSave();
   if (!had) reward(34);
+  flash('Saved ✓');
   renderKeystone(); updateMomentum(); scheduleJournal();
 }
 function khUnvote(h) { if (h.log[TODAY]) { delete h.log[TODAY]; khSave(); renderKeystone(); updateMomentum(); scheduleJournal(); } }
@@ -780,7 +782,7 @@ function renderKeystone() {
   const askAuto = sig.age >= 3 && h.auto.askedOn !== TODAY && (!h.auto.askedOn || daysBetween(h.auto.askedOn, TODAY) >= 3);
   let html = '';
   html += `<div class="kh-rep"><div class="kh-anchor">${esc(h.anchor)}</div><div class="kh-action"><span>${esc(h.name)}</span><span class="kh-floor">floor ${h.floor}, no cap</span></div></div>`;
-  html += `<div class="kh-vote-row"><button class="kh-vote${doneToday ? ' done' : ''}" id="khVoteBtn"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg><span>${doneToday ? "Done. that's him" : 'Mark it'}</span></button><input id="khCount" class="kh-count" type="number" inputmode="numeric" min="0" placeholder="${h.floor}" value="${doneToday ? (h.log[TODAY].count || '') : ''}" aria-label="how many" /></div>`;
+  html += `<div class="kh-vote-row"><button class="kh-vote${doneToday ? ' done' : ''}" id="khVoteBtn"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg><span>${doneToday ? "Done ✓ that's him" : 'Mark it'}</span></button><input id="khCount" class="kh-count" type="number" inputmode="numeric" min="0" placeholder="${h.floor}" value="${doneToday ? (h.log[TODAY].count || '') : ''}" aria-label="how many" /></div>`;
   if (!doneToday && khMissedYesterday(h)) html += `<div class="kh-warn">Missed yesterday. Never miss twice. Do the ${h.floor} now.</div>`;
   if (askAuto) html += `<div class="kh-auto"><div class="kh-auto-q">Fire on its own, or force it?</div><div class="yn-row"><button class="yn-btn yes" data-a="fires:1">On its own</button><button class="yn-btn no" data-a="fires:0">Forced it</button></div><div class="kh-auto-q">Would skipping it bug you?</div><div class="yn-row"><button class="yn-btn yes" data-a="pull:1">Yeah</button><button class="yn-btn no" data-a="pull:0">Not really</button></div></div>`;
   html += `<div class="kh-gate"><div class="kh-gate-head">Advancement gate</div><div class="kh-signals">${khSig('2 weeks solid', sig.sustained)}${khSig('Fires itself', sig.automatic)}${khSig('Skipping bugs you', sig.pull)}${khSig('Past the floor', sig.ceiling)}</div>`;
@@ -817,20 +819,9 @@ function renderTasks() {
 }
 
 /* evening reflection + journal — per day */
-const JOURNAL_PROMPTS = [
-  'What actually moved today, and what stalled?',
-  'Where did you act like the future you, and where like the ghost?',
-  'What did you avoid today, and why?',
-  'What are you proud of today, even something small?',
-  'What drained you, and what gave you energy?',
-  'If today repeated for a year, where does it take you?',
-  'What is the one thing that matters most tomorrow?',
-  'Who did you become a little more of today?',
-];
-let journalPromptOff = +(localStorage.getItem('journalPromptOff') || 0);
-let reflect = objGet('reflect_' + TODAY) || { ans: null, note: '', mood: null };
+let reflect = objGet('reflect_' + TODAY) || { ans: null, mood: null, year: '', thoughts: '' };
+if (reflect.note && !reflect.thoughts) reflect.thoughts = reflect.note;   // migrate old single-note entries
 function saveReflect() { localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); renderReflect(); scheduleJournal(); }
-function renderJournalPrompt() { const el = $('journalPrompt'); if (!el) return; const n = JOURNAL_PROMPTS.length; el.textContent = JOURNAL_PROMPTS[((dayOfYear() + journalPromptOff) % n + n) % n]; }
 function renderMood() {
   const row = $('moodRow'); if (!row) return;
   let h = '';
@@ -841,9 +832,9 @@ function renderMood() {
 function renderReflect() {
   $('reflectYes').classList.toggle('on', reflect.ans === 'yes');
   $('reflectNo').classList.toggle('on', reflect.ans === 'no');
-  if ($('reflectNote') && $('reflectNote').value !== (reflect.note || '')) $('reflectNote').value = reflect.note || '';
+  const y = $('reflectYear'); if (y && y.value !== (reflect.year || '')) y.value = reflect.year || '';
+  const t = $('reflectThoughts'); if (t && t.value !== (reflect.thoughts || '')) t.value = reflect.thoughts || '';
   renderMood();
-  renderJournalPrompt();
 }
 function dayHandoff() {
   const L = ['My day — ' + TODAY];
@@ -853,7 +844,8 @@ function dayHandoff() {
   const kh = khActive(); if (kh) L.push('Keystone (' + kh.name + '): ' + ((kh.log[TODAY] && kh.log[TODAY].hit) ? 'done, streak ' + khStreak(kh) : 'not yet'));
   if (reflect.ans) L.push('Did what my goals required: ' + reflect.ans);
   if (reflect.mood) L.push('Mental state: ' + reflect.mood + '/10');
-  if (reflect.note) L.push('', 'Journal:', reflect.note);
+  if (reflect.year) L.push('', 'If today repeated for a year, where does it take me:', reflect.year);
+  if (reflect.thoughts) L.push('', 'Thoughts on the day:', reflect.thoughts);
   return L.join('\n');
 }
 async function toFutureSelf() {
@@ -903,8 +895,13 @@ $('principleOpen').addEventListener('click', () => { renderPrinciplesScreen(); s
 $('taskForm').addEventListener('submit', (e) => { e.preventDefault(); const v = $('taskInput').value.trim(); if (!v) return; tasks.push({ id: uid(), t: v, done: false }); $('taskInput').value = ''; saveTasks(); });
 $('reflectYes').addEventListener('click', () => { reflect.ans = reflect.ans === 'yes' ? null : 'yes'; saveReflect(); if (reflect.ans === 'yes') reward(50); });
 $('reflectNo').addEventListener('click', () => { reflect.ans = reflect.ans === 'no' ? null : 'no'; saveReflect(); });
-$('reflectNote').addEventListener('input', (e) => { reflect.note = e.target.value; localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); scheduleJournal(); });
-$('journalAnother').addEventListener('click', () => { journalPromptOff = (journalPromptOff + 1) % JOURNAL_PROMPTS.length; localStorage.setItem('journalPromptOff', journalPromptOff); renderJournalPrompt(); });
+$('reflectYear').addEventListener('input', (e) => { reflect.year = e.target.value; localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); scheduleJournal(); });
+$('reflectThoughts').addEventListener('input', (e) => { reflect.thoughts = e.target.value; localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); scheduleJournal(); });
+$('saveJournal').addEventListener('click', () => {
+  localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); syncJournal(); reward(40);
+  const b = $('saveJournal'), o = b.textContent; b.textContent = 'Saved ✓'; b.classList.add('saved');
+  setTimeout(() => { b.textContent = o; b.classList.remove('saved'); }, 1800);
+});
 $('toFutureSelf').addEventListener('click', toFutureSelf);
 
 /* the one thing */
