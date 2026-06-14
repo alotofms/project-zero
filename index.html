@@ -97,6 +97,14 @@
       </form>
     </section>
 
+    <section class="block card kh-card">
+      <div class="card-head">
+        <h2 class="label">Keystone Habit</h2>
+        <span class="kh-streak-badge"><svg viewBox="0 0 24 24"><use href="#i-flame"/></svg><b id="khStreak">0</b></span>
+      </div>
+      <div id="khBody" class="kh-body"></div>
+    </section>
+
     <section class="block">
       <h2 class="label">Capture</h2>
       <div class="actions">
@@ -124,7 +132,7 @@
 
     <section class="block card">
       <div class="card-head">
-        <h2 class="label">Daily Habits</h2>
+        <h2 class="label">Daily Standards</h2>
         <span id="habitsProgress" class="count">0 / 0</span>
       </div>
       <div class="progress"><div id="habitsBar" class="progress-fill"></div></div>
@@ -175,7 +183,14 @@
         <button id="reflectYes" class="yn-btn yes">Yes</button>
         <button id="reflectNo" class="yn-btn no">No</button>
       </div>
-      <textarea id="reflectNote" placeholder="One line: what moved, what didn't." maxlength="280"></textarea>
+      <div class="ev-sub">Mental state today</div>
+      <div id="moodRow" class="mood-row"></div>
+      <div class="jr-head">
+        <span id="journalPrompt" class="jr-prompt"></span>
+        <button id="journalAnother" class="pc-more" type="button">another</button>
+      </div>
+      <textarea id="reflectNote" placeholder="Write it out. What happened, how you felt, what you're carrying into tomorrow." maxlength="4000"></textarea>
+      <button id="toFutureSelf" class="ghost-btn ev-send"><svg viewBox="0 0 24 24" class="mini"><use href="#i-bolt"/></svg> Take today to Future Me</button>
     </section>
 
     <button id="historyLink" class="ghost-btn"><svg viewBox="0 0 24 24" class="mini"><use href="#i-history"/></svg> View past days</button>
