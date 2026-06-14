@@ -95,6 +95,9 @@ svg { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; 
 .pill:active { transform: scale(.93); }
 .pill.signin { color: var(--on-gold); background: var(--gold); border-color: transparent; font-weight: 700; }
 .pill.busy { color: var(--gold); border-color: var(--gold-line); }
+.pill.spin { display: inline-flex; align-items: center; gap: 7px; }
+.pill.spin::before { content: ""; width: 11px; height: 11px; border-radius: 50%; border: 1.6px solid var(--gold-line); border-top-color: var(--gold); animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
 
 .label { font-size: 11px; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; color: var(--faint); margin: 0 0 14px; }
 .small { font-size: 12px; }

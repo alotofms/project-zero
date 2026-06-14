@@ -21,6 +21,7 @@ let facing = 'user', camFlipping = false;
 let curRid = null, curRecName = '', curRecMime = '';
 let voiceStream = null, voiceRec = null, voiceChunks = [];
 let camMode = null, lastMsg = 'Ready', processing = false, db = null, flashT = null;
+let retryTimer = null, retryBackoff = 0;
 let pzId = null; const dayCache = {};
 
 /* ---------- mime / filenames / dates ---------- */
@@ -49,11 +50,21 @@ function initAuth() {
         onSignedIn();
       } else { tokenResolvers.forEach((r) => r.reject(new Error('auth'))); tokenResolvers = []; }
     },
-    error_callback: () => {}
+    error_callback: (err) => { tokenResolvers.forEach((r) => r.reject(err || new Error('auth'))); tokenResolvers = []; }
   });
 }
+// never let a token request hang: it settles on callback, error_callback, or a 15s timeout
 function requestToken(prompt) {
-  return new Promise((resolve, reject) => { tokenResolvers.push({ resolve, reject }); tokenClient.requestAccessToken({ prompt: prompt || '' }); });
+  return new Promise((resolve, reject) => {
+    let done = false;
+    const entry = {
+      resolve: (v) => { if (done) return; done = true; clearTimeout(to); resolve(v); },
+      reject: (e) => { if (done) return; done = true; clearTimeout(to); reject(e); }
+    };
+    const to = setTimeout(() => entry.reject(new Error('token-timeout')), 15000);
+    tokenResolvers.push(entry);
+    try { tokenClient.requestAccessToken({ prompt: prompt || '' }); } catch (e) { entry.reject(e); }
+  });
 }
 async function ensureToken() { return (accessToken && Date.now() < tokenExpiry) ? accessToken : requestToken(''); }
 function onSignedIn() { render(); processQueue(); syncJournal(); loadPeopleFromDrive(); }
@@ -146,26 +157,53 @@ async function enqueue(blob, name, mime) {
   bumpCaptures(); updateMomentum();
   flash('Saved'); processQueue();
 }
+// exponential backoff: 5s, 10s, 20s, 40s, capped at 60s. reset to 0 on any success.
+function scheduleRetry() {
+  if (!accessToken) return;
+  clearTimeout(retryTimer);
+  retryBackoff = retryBackoff ? Math.min(retryBackoff * 2, 60000) : 5000;
+  retryTimer = setTimeout(processQueue, retryBackoff);
+}
 async function processQueue() {
   if (processing || !accessToken || !db) { render(); return; }
   processing = true;
+  let authFailed = false;
   try {
-    for (const it of await qAll()) {
-      try { lastMsg = 'Uploading…'; render(); await uploadToDrive(it.name, it.mime, it.blob, it.createdAt); await qDel(it.id); lastMsg = 'Uploaded ✓'; }
-      catch (e) { lastMsg = 'Will retry'; }
+    const items = await qAll();
+    let i = 0;
+    for (const it of items) {
+      i++;
+      try {
+        lastMsg = `Uploading ${i}/${items.length}…`; render();
+        await uploadToDrive(it.name, it.mime, it.blob, it.createdAt);
+        await qDel(it.id);
+        retryBackoff = 0; lastMsg = 'Uploaded ✓';
+      } catch (e) {
+        // a real auth failure means the token is dead -> stop and ask the user to sign in
+        if (/token|auth|\b401\b/i.test((e && e.message) || '')) { authFailed = true; break; }
+        lastMsg = 'Will retry';   // network/transient -> backoff and retry
+      }
       render();
     }
-  } finally { processing = false; render(); }
+  } finally {
+    processing = false;
+    if (authFailed) { accessToken = null; tokenExpiry = 0; }
+    const remaining = db ? (await qAll()).length : 0;
+    if (remaining === 0) { clearTimeout(retryTimer); retryBackoff = 0; }
+    render();
+    if (remaining > 0 && accessToken) scheduleRetry();
+  }
 }
 
 /* ---------- status rendering ---------- */
 async function render() {
-  if (!accessToken) { statusEl.textContent = 'Sign in'; statusEl.classList.add('signin'); statusEl.classList.remove('busy'); }
+  if (!accessToken) { statusEl.textContent = 'Sign in'; statusEl.classList.add('signin'); statusEl.classList.remove('busy', 'spin'); }
   else {
     statusEl.classList.remove('signin');
     const n = db ? (await qAll()).length : 0;
-    statusEl.textContent = n > 0 ? `${n} pending` : lastMsg;
-    statusEl.classList.toggle('busy', n > 0);
+    statusEl.textContent = processing ? lastMsg : (n > 0 ? `${n} pending` : lastMsg);
+    statusEl.classList.toggle('busy', n > 0 || processing);
+    statusEl.classList.toggle('spin', processing);
   }
   if (camMode) { const n = db ? (await qAll()).length : 0; setCam(n > 0 ? `${n} pending` : (lastMsg !== 'Ready' ? lastMsg : '')); }
 }
@@ -742,10 +780,13 @@ $('flipBtn').addEventListener('click', flipCamera);
 voiceBtn.addEventListener('click', toggleVoice);
 $('pickImage').addEventListener('click', () => { if (requireAuth()) imageInput.click(); });
 $('pickFile').addEventListener('click', () => { if (requireAuth()) fileInput.click(); });
-$('uploadAll').addEventListener('click', () => { if (requireAuth()) { flash('Uploading…'); processQueue(); } });
+$('uploadAll').addEventListener('click', () => { if (requireAuth()) { retryBackoff = 0; clearTimeout(retryTimer); flash('Uploading…'); processQueue(); } });
 imageInput.addEventListener('change', () => { [...imageInput.files].forEach((f) => enqueue(f, f.name || fname('jpg'), f.type || 'image/jpeg')); imageInput.value = ''; });
 fileInput.addEventListener('change', () => { [...fileInput.files].forEach((f) => enqueue(f, f.name || fname('dat'), f.type || 'application/octet-stream')); fileInput.value = ''; });
-statusEl.addEventListener('click', () => { accessToken ? processQueue() : requestToken('').catch(() => {}); });
+statusEl.addEventListener('click', () => { retryBackoff = 0; clearTimeout(retryTimer); accessToken ? processQueue() : requestToken('').catch(() => {}); });
+// resume stuck uploads when the network returns or the app comes back to the foreground
+window.addEventListener('online', () => { retryBackoff = 0; clearTimeout(retryTimer); processQueue(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { retryBackoff = 0; processQueue(); } });
 $('historyBtn').addEventListener('click', openHistory);
 $('historyLink').addEventListener('click', openHistory);
 $('momentumStrip').addEventListener('click', openMomentum);
