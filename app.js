@@ -819,7 +819,7 @@ function renderTasks() {
 }
 
 /* evening reflection + journal — per day */
-let reflect = objGet('reflect_' + TODAY) || { ans: null, mood: null, year: '', thoughts: '' };
+let reflect = objGet('reflect_' + TODAY) || { ans: null, mood: null, year: '', thoughts: '', saved: false };
 if (reflect.note && !reflect.thoughts) reflect.thoughts = reflect.note;   // migrate old single-note entries
 function saveReflect() { localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); renderReflect(); scheduleJournal(); }
 function renderMood() {
@@ -829,12 +829,18 @@ function renderMood() {
   row.innerHTML = h;
   row.querySelectorAll('.mood-dot').forEach((b) => { b.onclick = () => { const m = +b.dataset.m; reflect.mood = (reflect.mood === m ? null : m); saveReflect(); if (reflect.mood) reward(24); }; });
 }
+function renderJournalState() {
+  const open = $('journalOpen'), done = $('journalDone');
+  if (!open || !done) return;
+  open.hidden = !!reflect.saved; done.hidden = !reflect.saved;
+}
 function renderReflect() {
   $('reflectYes').classList.toggle('on', reflect.ans === 'yes');
   $('reflectNo').classList.toggle('on', reflect.ans === 'no');
   const y = $('reflectYear'); if (y && y.value !== (reflect.year || '')) y.value = reflect.year || '';
   const t = $('reflectThoughts'); if (t && t.value !== (reflect.thoughts || '')) t.value = reflect.thoughts || '';
   renderMood();
+  renderJournalState();
 }
 function dayHandoff() {
   const L = ['My day — ' + TODAY];
@@ -898,10 +904,11 @@ $('reflectNo').addEventListener('click', () => { reflect.ans = reflect.ans === '
 $('reflectYear').addEventListener('input', (e) => { reflect.year = e.target.value; localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); scheduleJournal(); });
 $('reflectThoughts').addEventListener('input', (e) => { reflect.thoughts = e.target.value; localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); scheduleJournal(); });
 $('saveJournal').addEventListener('click', () => {
+  reflect.saved = true;
   localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); syncJournal(); reward(40);
-  const b = $('saveJournal'), o = b.textContent; b.textContent = 'Saved ✓'; b.classList.add('saved');
-  setTimeout(() => { b.textContent = o; b.classList.remove('saved'); }, 1800);
+  renderJournalState();
 });
+$('editJournal').addEventListener('click', () => { reflect.saved = false; localStorage.setItem('reflect_' + TODAY, JSON.stringify(reflect)); renderJournalState(); });
 $('toFutureSelf').addEventListener('click', toFutureSelf);
 
 /* the one thing */
