@@ -309,7 +309,7 @@ function reward(n) {
   if (navigator.vibrate) { try { navigator.vibrate(28); } catch (e) {} }
   if (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const c = $('confetti'); if (!c) return;
-  const cols = ['#ff5a45', '#9b6bff', '#34d8a4', '#ffb23d', '#ff2e74', '#4f9bff'];
+  const cols = ['#e0c282', '#c8a45c', '#f1eee7', '#b88a3e', '#d8b876', '#9c7430'];
   let h = '';
   for (let i = 0; i < (n || 40); i++) {
     const left = Math.random() * 100, dur = 0.65 + Math.random() * 0.5, del = Math.random() * 0.25;
