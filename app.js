@@ -765,20 +765,26 @@ function khVote(h, n) {
   const count = (typeof n === 'number' && n > 0) ? n : ((h.log[TODAY] && h.log[TODAY].count) || h.floor);
   h.log[TODAY] = { hit: true, count }; khSave();
   if (!had) reward(34);
-  flash('Saved ✓');
+  flash('Saved ✓'); khEditing = false;
   renderKeystone(); updateMomentum(); scheduleJournal();
 }
-function khUnvote(h) { if (h.log[TODAY]) { delete h.log[TODAY]; khSave(); renderKeystone(); updateMomentum(); scheduleJournal(); } }
+function khUnvote(h) { if (h.log[TODAY]) { delete h.log[TODAY]; khEditing = false; khSave(); renderKeystone(); updateMomentum(); scheduleJournal(); } }
 function khSetAuto(h, key, val) { h.auto = h.auto || {}; h.auto[key] = val; h.auto.askedOn = TODAY; khSave(); renderKeystone(); }
 function khRaiseFloor(h) { h.floor += 3; khSave(); flash('Floor raised to ' + h.floor); renderKeystone(); }
 function khAddHabit(name, anchor) { const cur = khActive(); if (cur) cur.status = 'installed'; khabits.push({ id: uid(), name, anchor, floor: 2, createdAt: TODAY, status: 'active', log: {}, auto: { fires: null, pull: null, askedOn: '' } }); khSave(); flash('New keystone habit. One at a time.'); renderKeystone(); updateMomentum(); }
 function khSig(label, on) { return `<span class="kh-sig${on ? ' on' : ''}"><i></i>${esc(label)}</span>`; }
+let khEditing = false;
 function renderKeystone() {
   const wrap = $('khBody'); if (!wrap) return;
   const h = khActive();
   if (!h) { wrap.innerHTML = '<p class="empty">No active keystone habit.</p>'; if ($('khStreak')) $('khStreak').textContent = '0'; return; }
   const sig = khSignals(h), streak = khStreak(h), doneToday = !!(h.log[TODAY] && h.log[TODAY].hit);
   if ($('khStreak')) $('khStreak').textContent = streak;
+  if (doneToday && !khEditing) {
+    wrap.innerHTML = `<div class="jr-done"><span class="jr-done-msg"><svg viewBox="0 0 24 24"><use href="#i-check"/></svg> ${esc(h.name)} done${h.log[TODAY].count ? ' · ' + h.log[TODAY].count : ''} · streak ${streak}</span><button id="khEdit" class="pc-more" type="button">Edit</button></div>`;
+    $('khEdit').onclick = () => { khEditing = true; renderKeystone(); };
+    return;
+  }
   const askAuto = sig.age >= 3 && h.auto.askedOn !== TODAY && (!h.auto.askedOn || daysBetween(h.auto.askedOn, TODAY) >= 3);
   let html = '';
   html += `<div class="kh-rep"><div class="kh-anchor">${esc(h.anchor)}</div><div class="kh-action"><span>${esc(h.name)}</span><span class="kh-floor">floor ${h.floor}, no cap</span></div></div>`;

@@ -1,6 +1,6 @@
 // Minimal service worker: cache the app shell so it installs and opens offline.
 // Media uploads always go to the network (never cached).
-const CACHE = 'pz-shell-v16';
+const CACHE = 'pz-shell-v17';
 const SHELL = [
   './', './index.html', './styles.css', './app.js',
   './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'
